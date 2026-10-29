@@ -319,7 +319,7 @@ The implementation followed a structured, test-driven engineering lifecycle:
 
 ## 7. Commands & Interactive Verification
 
-### Running Automated Tests (64 Tests)
+### Running Automated Tests (71 Tests)
 ```powershell
 # PowerShell
 .\test.ps1
@@ -338,7 +338,18 @@ run.cmd
 ```
 The service will start listening on `http://localhost:5142`.
 
-### Interactive REST Client Verification
+### Interactive Swagger UI (OpenAPI 3.0)
+Navigate in any web browser to:
+- **Swagger Interactive UI**: `http://localhost:5142/swagger`
+- **Root URL**: `http://localhost:5142/` (automatically redirects to Swagger UI)
+- **OpenAPI 3.0 JSON Document**: `http://localhost:5142/swagger/v1/swagger.json`
+
+Features enabled:
+- Interactive "Try it out" requests for all endpoints
+- Execution duration metrics
+- Complete request/response schemas with XML documentation comments
+
+### Alternative: REST Client (.http) Verification
 Open [NotificationApi.http](file:///c:/Users/Mhari/Desktop/Task%20Project/src/NotificationApi/NotificationApi.http) in Visual Studio, VS Code (REST Client extension), or JetBrains Rider to execute real requests:
 1. Valid creation with High priority
 2. Idempotency test (repeat within 5 mins to verify `200 OK` and `X-Duplicate-Detected: true`)
@@ -346,4 +357,5 @@ Open [NotificationApi.http](file:///c:/Users/Mhari/Desktop/Task%20Project/src/No
 4. Simulated provider failure (`fail@example.com` triggering gateway failure)
 5. Trigger manual batch processing (`POST /api/notifications/process`)
 6. Customer retrieval (`GET /api/notifications/customer/{customerId}`)
+
 

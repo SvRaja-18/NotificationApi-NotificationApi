@@ -336,5 +336,43 @@ public class NotificationsApiIntegrationTests : IClassFixture<WebApplicationFact
         var procResponse = await _client.PostAsync($"/api/notifications/{randomId}/process", null);
         Assert.Equal(HttpStatusCode.NotFound, procResponse.StatusCode);
     }
+
+    [Fact]
+    public async Task GetSwaggerDocument_Returns200OkWithOpenApiSpecification()
+    {
+        var response = await _client.GetAsync("/swagger/v1/swagger.json");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Customer Notification Processing API", content);
+        Assert.Contains("/api/Notifications", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetSwaggerUi_Returns200OkWithHtmlInterface()
+    {
+        var response = await _client.GetAsync("/swagger/index.html");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("swagger-ui", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetRoot_RedirectsToSwaggerUi()
+    {
+        var factory = new WebApplicationFactory<Program>();
+        using var noRedirectClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var response = await noRedirectClient.GetAsync("/");
+        Assert.True(
+            response.StatusCode == HttpStatusCode.Redirect ||
+            response.StatusCode == HttpStatusCode.MovedPermanently ||
+            response.StatusCode == HttpStatusCode.TemporaryRedirect);
+        Assert.Equal("/swagger", response.Headers.Location?.OriginalString);
+    }
 }
 

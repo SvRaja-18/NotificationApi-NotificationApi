@@ -33,8 +33,16 @@ Or directly via .NET CLI:
 
 The service will start listening on `http://localhost:5142` (configured in `launchSettings.json`).
 
+### Accessing Swagger API Documentation (UI)
+Once running, navigate to:
+- **Swagger Interactive UI**: [http://localhost:5142/swagger](http://localhost:5142/swagger)
+- **Root URL Redirect**: [http://localhost:5142/](http://localhost:5142/) automatically redirects to the Swagger UI.
+- **OpenAPI 3.0 Specification (JSON)**: [http://localhost:5142/swagger/v1/swagger.json](http://localhost:5142/swagger/v1/swagger.json)
+
+The Swagger UI includes interactive "Try it out" capabilities, request execution duration metrics, and schema documentation for all endpoints.
+
 ### Running the Automated Tests
-Run all 68 unit and integration tests using:
+Run all 71 unit, integration, and Swagger tests using:
 
 ```powershell
 # PowerShell
