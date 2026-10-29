@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: notification-processing-api
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /swagger/v1/swagger.json
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: NotificationProcessing__WorkerEnabled
+        value: "true"
+      - key: NotificationProcessing__WorkerInterval
+        value: "00:00:03"
+      - key: NotificationProcessing__DeduplicationWindow
+        value: "00:05:00"

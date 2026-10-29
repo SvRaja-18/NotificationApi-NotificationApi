@@ -55,7 +55,6 @@ builder.Services.AddSingleton<INotificationDeduplicationService, NotificationDed
 // Provider implementations
 builder.Services.AddSingleton<INotificationProvider, EmailNotificationProvider>();
 
-// Processing & Application services
 builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
@@ -64,7 +63,16 @@ builder.Services.AddHostedService<NotificationBackgroundWorker>();
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                       Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+});
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Swagger API Documentation & UI
 app.UseSwagger();
