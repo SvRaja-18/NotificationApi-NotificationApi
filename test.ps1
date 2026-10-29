@@ -4,9 +4,11 @@ $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = "1"
 $env:DOTNET_NOLOGO = "1"
 $env:DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER = "1"
 
-$dotnetExe = "$PSScriptRoot\.dotnet-sdk\dotnet.exe"
-if (-not (Test-Path $dotnetExe)) {
-    $dotnetExe = "dotnet"
+$dotnetExe = "dotnet"
+if (-not (Get-Command "dotnet" -ErrorAction SilentlyContinue)) {
+    if (Test-Path "$PSScriptRoot\.dotnet-sdk\dotnet.exe") {
+        $dotnetExe = "$PSScriptRoot\.dotnet-sdk\dotnet.exe"
+    }
 }
 
 Write-Host "Running tests with .NET 10 ($dotnetExe)..." -ForegroundColor Cyan
