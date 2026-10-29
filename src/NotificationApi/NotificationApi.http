@@ -82,3 +82,22 @@ Accept: application/json
 ### 8. Get Notification by ID (Replace with an existing GUID)
 GET {{HostAddress}}/api/notifications/00000000-0000-0000-0000-000000000000
 Accept: application/json
+
+###
+
+### 9. Filter Notifications by Status (Sent, Pending, Failed)
+GET {{HostAddress}}/api/notifications?status=Sent
+Accept: application/json
+
+###
+
+### 10. Filter Notifications by Customer ID and Status
+GET {{HostAddress}}/api/notifications?customerId=CUST-101&status=Pending
+Accept: application/json
+
+###
+
+### 11. Trigger Processing for a Single Notification by ID (Replace with a Pending GUID)
+POST {{HostAddress}}/api/notifications/00000000-0000-0000-0000-000000000000/process
+Accept: application/json
+

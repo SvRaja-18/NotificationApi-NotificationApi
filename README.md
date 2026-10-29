@@ -243,11 +243,15 @@ If taking this service to production, the following enhancements would be recomm
 
 ---
 
-## 7. API Reference & Sample Requests
+## 7. API Reference & Sample Requests / Responses Catalog
 
-### Create Notification
+### 1. Insert (Create) Notification — `POST /api/notifications`
+
+#### 1.1 Standard Successful Creation (High Priority)
+**Request**:
 ```http
 POST /api/notifications HTTP/1.1
+Host: localhost:5142
 Content-Type: application/json
 
 {
@@ -255,12 +259,13 @@ Content-Type: application/json
   "type": "Email",
   "recipient": "customer@example.com",
   "subject": "Order Confirmed",
-  "message": "Your order has been confirmed.",
+  "message": "Your order #1001 has been confirmed and is being packed.",
   "priority": "High",
   "requestedDeliveryTime": "2026-10-29T12:30:00Z"
 }
 ```
-**Response (201 Created)**:
+
+**Response (`201 Created`)**:
 ```json
 {
   "id": "c8646b5a-e7be-43a0-be29-d655f46a2a51",
@@ -268,42 +273,357 @@ Content-Type: application/json
   "type": "Email",
   "recipient": "customer@example.com",
   "subject": "Order Confirmed",
-  "message": "Your order has been confirmed.",
+  "message": "Your order #1001 has been confirmed and is being packed.",
   "priority": "High",
   "requestedDeliveryTime": "2026-10-29T12:30:00Z",
   "createdAt": "2026-10-29T12:00:00Z",
   "status": "Pending",
+  "processedAt": null,
+  "failureReason": null,
+  "attemptCount": 0,
   "isDuplicate": false
 }
 ```
 
-### Retrieve by ID
+---
+
+#### 1.2 Duplicate / Idempotent Request within 5 Minutes
+Submitting the identical payload or specifying the same `Idempotency-Key` header within 5 minutes returns the existing record without re-processing.
+
+**Request**:
 ```http
-GET /api/notifications/{id} HTTP/1.1
+POST /api/notifications HTTP/1.1
+Host: localhost:5142
+Content-Type: application/json
+Idempotency-Key: ORDER-1001-KEY
+
+{
+  "customerId": "CUST-101",
+  "type": "Email",
+  "recipient": "customer@example.com",
+  "subject": "Order Confirmed",
+  "message": "Your order #1001 has been confirmed and is being packed.",
+  "priority": "High",
+  "requestedDeliveryTime": "2026-10-29T12:30:00Z"
+}
 ```
 
-### Retrieve by Customer ID
-```http
-GET /api/notifications/customer/CUST-101 HTTP/1.1
-```
-
-### Trigger Processing
-```http
-POST /api/notifications/process HTTP/1.1
-```
-**Response (200 OK)**:
+**Response (`200 OK`)**:
+*Headers*: `X-Duplicate-Detected: true`
 ```json
 {
-  "totalEligible": 1,
+  "id": "c8646b5a-e7be-43a0-be29-d655f46a2a51",
+  "customerId": "CUST-101",
+  "type": "Email",
+  "recipient": "customer@example.com",
+  "subject": "Order Confirmed",
+  "message": "Your order #1001 has been confirmed and is being packed.",
+  "priority": "High",
+  "requestedDeliveryTime": "2026-10-29T12:30:00Z",
+  "createdAt": "2026-10-29T12:00:00Z",
+  "status": "Pending",
+  "processedAt": null,
+  "failureReason": null,
+  "attemptCount": 0,
+  "isDuplicate": true
+}
+```
+
+---
+
+#### 1.3 Validation Error (Missing required fields / invalid email)
+**Request**:
+```http
+POST /api/notifications HTTP/1.1
+Host: localhost:5142
+Content-Type: application/json
+
+{
+  "customerId": "",
+  "type": "SMS",
+  "recipient": "invalid-email-address",
+  "subject": "",
+  "message": "",
+  "priority": "Urgent",
+  "requestedDeliveryTime": "2020-01-01T00:00:00Z"
+}
+```
+
+**Response (`400 Bad Request`)**:
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "detail": "Please refer to the errors property for detailed validation failures.",
+  "errors": {
+    "CustomerId": ["CustomerId is required and cannot be empty."],
+    "Type": ["Only 'Email' notifications are currently supported."],
+    "Recipient": ["Recipient must be a valid email address."],
+    "Subject": ["Subject is required."],
+    "Message": ["Message is required."],
+    "Priority": ["Priority must be 'Low', 'Normal', or 'High'."],
+    "RequestedDeliveryTime": ["RequestedDeliveryTime cannot be in the past."]
+  }
+}
+```
+
+---
+
+#### 1.4 Simulated Resilient Provider Failure (`fail@example.com`)
+**Request**:
+```http
+POST /api/notifications HTTP/1.1
+Host: localhost:5142
+Content-Type: application/json
+
+{
+  "customerId": "CUST-999",
+  "type": "Email",
+  "recipient": "fail@example.com",
+  "subject": "Payment Receipt",
+  "message": "Testing resilient failure handling.",
+  "priority": "Normal",
+  "requestedDeliveryTime": "2026-10-29T12:00:00Z"
+}
+```
+
+**Response (`201 Created`)**:
+```json
+{
+  "id": "e243fc47-3cf8-4729-b695-885ecfa519ef",
+  "customerId": "CUST-999",
+  "type": "Email",
+  "recipient": "fail@example.com",
+  "subject": "Payment Receipt",
+  "message": "Testing resilient failure handling.",
+  "priority": "Normal",
+  "requestedDeliveryTime": "2026-10-29T12:00:00Z",
+  "createdAt": "2026-10-29T12:00:00Z",
+  "status": "Pending",
+  "processedAt": null,
+  "failureReason": null,
+  "attemptCount": 0,
+  "isDuplicate": false
+}
+```
+
+---
+
+### 2. Get Notification by ID — `GET /api/notifications/{id}`
+
+#### 2.1 Existing Notification (Processed / Sent)
+**Request**:
+```http
+GET /api/notifications/c8646b5a-e7be-43a0-be29-d655f46a2a51 HTTP/1.1
+Host: localhost:5142
+Accept: application/json
+```
+
+**Response (`200 OK`)**:
+```json
+{
+  "id": "c8646b5a-e7be-43a0-be29-d655f46a2a51",
+  "customerId": "CUST-101",
+  "type": "Email",
+  "recipient": "customer@example.com",
+  "subject": "Order Confirmed",
+  "message": "Your order #1001 has been confirmed and is being packed.",
+  "priority": "High",
+  "requestedDeliveryTime": "2026-10-29T12:30:00Z",
+  "createdAt": "2026-10-29T12:00:00Z",
+  "status": "Sent",
+  "processedAt": "2026-10-29T12:30:01Z",
+  "failureReason": null,
+  "attemptCount": 1,
+  "isDuplicate": false
+}
+```
+
+#### 2.2 Non-Existent Notification
+**Request**:
+```http
+GET /api/notifications/00000000-0000-0000-0000-000000000000 HTTP/1.1
+Host: localhost:5142
+Accept: application/json
+```
+
+**Response (`404 Not Found`)**:
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+  "title": "Notification Not Found",
+  "status": 404,
+  "detail": "Notification with ID '00000000-0000-0000-0000-000000000000' was not found."
+}
+```
+
+---
+
+### 3. Get Notifications by Customer ID — `GET /api/notifications/customer/{customerId}`
+
+**Request**:
+```http
+GET /api/notifications/customer/CUST-101 HTTP/1.1
+Host: localhost:5142
+Accept: application/json
+```
+
+**Response (`200 OK`)**:
+```json
+[
+  {
+    "id": "c8646b5a-e7be-43a0-be29-d655f46a2a51",
+    "customerId": "CUST-101",
+    "type": "Email",
+    "recipient": "customer@example.com",
+    "subject": "Order Confirmed",
+    "message": "Your order #1001 has been confirmed and is being packed.",
+    "priority": "High",
+    "requestedDeliveryTime": "2026-10-29T12:30:00Z",
+    "createdAt": "2026-10-29T12:00:00Z",
+    "status": "Sent",
+    "processedAt": "2026-10-29T12:30:01Z",
+    "failureReason": null,
+    "attemptCount": 1,
+    "isDuplicate": false
+  },
+  {
+    "id": "9f71b2d0-1123-4b8c-a192-3580e6fbbd12",
+    "customerId": "CUST-101",
+    "type": "Email",
+    "recipient": "customer@example.com",
+    "subject": "Shipping Update",
+    "message": "Your package has been dispatched via Express Courier.",
+    "priority": "Normal",
+    "requestedDeliveryTime": "2026-10-29T14:00:00Z",
+    "createdAt": "2026-10-29T12:15:00Z",
+    "status": "Pending",
+    "processedAt": null,
+    "failureReason": null,
+    "attemptCount": 0,
+    "isDuplicate": false
+  }
+]
+```
+
+---
+
+### 4. Get All Notifications with Optional Filters — `GET /api/notifications`
+
+#### 4.1 Get All (No Filter)
+**Request**:
+```http
+GET /api/notifications HTTP/1.1
+Host: localhost:5142
+Accept: application/json
+```
+
+#### 4.2 Filter by Status (`Sent`, `Pending`, or `Failed`)
+**Request**:
+```http
+GET /api/notifications?status=Sent HTTP/1.1
+Host: localhost:5142
+Accept: application/json
+```
+
+#### 4.3 Filter by Customer and Status
+**Request**:
+```http
+GET /api/notifications?customerId=CUST-101&status=Pending HTTP/1.1
+Host: localhost:5142
+Accept: application/json
+```
+
+**Response (`200 OK`)**:
+```json
+[
+  {
+    "id": "9f71b2d0-1123-4b8c-a192-3580e6fbbd12",
+    "customerId": "CUST-101",
+    "type": "Email",
+    "recipient": "customer@example.com",
+    "subject": "Shipping Update",
+    "message": "Your package has been dispatched via Express Courier.",
+    "priority": "Normal",
+    "requestedDeliveryTime": "2026-10-29T14:00:00Z",
+    "createdAt": "2026-10-29T12:15:00Z",
+    "status": "Pending",
+    "processedAt": null,
+    "failureReason": null,
+    "attemptCount": 0,
+    "isDuplicate": false
+  }
+]
+```
+
+---
+
+### 5. Trigger Batch Processing — `POST /api/notifications/process`
+
+Manually triggers immediate dispatch for all currently eligible pending notifications (sorted High ➔ Normal ➔ Low, FIFO for ties).
+
+**Request**:
+```http
+POST /api/notifications/process HTTP/1.1
+Host: localhost:5142
+```
+
+**Response (`200 OK`)**:
+```json
+{
+  "totalEligible": 2,
   "succeeded": 1,
-  "failed": 0,
+  "failed": 1,
   "items": [
     {
       "id": "c8646b5a-e7be-43a0-be29-d655f46a2a51",
       "recipient": "customer@example.com",
       "priority": "High",
-      "success": true
+      "success": true,
+      "errorMessage": null
+    },
+    {
+      "id": "e243fc47-3cf8-4729-b695-885ecfa519ef",
+      "recipient": "fail@example.com",
+      "priority": "Normal",
+      "success": false,
+      "errorMessage": "Simulated transient provider rejection for address fail@example.com"
     }
   ]
+}
+```
+
+---
+
+### 6. Trigger Single Notification Processing — `POST /api/notifications/{id}/process`
+
+Immediately processes a single specified pending notification by its GUID.
+
+**Request**:
+```http
+POST /api/notifications/c8646b5a-e7be-43a0-be29-d655f46a2a51/process HTTP/1.1
+Host: localhost:5142
+```
+
+**Response (`200 OK`)**:
+```json
+{
+  "id": "c8646b5a-e7be-43a0-be29-d655f46a2a51",
+  "recipient": "customer@example.com",
+  "priority": "High",
+  "success": true,
+  "errorMessage": null
+}
+```
+
+*If the notification does not exist or has already transitioned out of `Pending` status:*
+**Response (`404 Not Found`)**:
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+  "title": "Notification Not Found",
+  "status": 404,
+  "detail": "Notification with ID 'c8646b5a-e7be-43a0-be29-d655f46a2a51' was not found or was not in Pending state."
 }
 ```
