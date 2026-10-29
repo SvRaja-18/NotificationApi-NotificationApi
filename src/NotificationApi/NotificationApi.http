@@ -1,0 +1,84 @@
+@HostAddress = http://localhost:5142
+
+### 1. Create a Valid High-Priority Notification
+POST {{HostAddress}}/api/notifications
+Content-Type: application/json
+
+{
+  "customerId": "CUST-101",
+  "type": "Email",
+  "recipient": "customer@example.com",
+  "subject": "Order Confirmed",
+  "message": "Your order #1001 has been confirmed and is being packed.",
+  "priority": "High",
+  "requestedDeliveryTime": "2026-10-29T12:30:00Z"
+}
+
+###
+
+### 2. Test Idempotency / Duplicate Prevention (Send twice within 5 mins)
+POST {{HostAddress}}/api/notifications
+Content-Type: application/json
+Idempotency-Key: ORDER-1001-CONFIRMATION
+
+{
+  "customerId": "CUST-101",
+  "type": "Email",
+  "recipient": "customer@example.com",
+  "subject": "Order Confirmed",
+  "message": "Your order #1001 has been confirmed and is being packed.",
+  "priority": "High",
+  "requestedDeliveryTime": "2026-10-29T12:30:00Z"
+}
+
+###
+
+### 3. Test Validation Failure (Invalid email, missing message, past delivery time)
+POST {{HostAddress}}/api/notifications
+Content-Type: application/json
+
+{
+  "customerId": "",
+  "type": "SMS",
+  "recipient": "invalid-email-format",
+  "priority": "Urgent",
+  "requestedDeliveryTime": "2020-01-01T00:00:00Z"
+}
+
+###
+
+### 4. Test Simulated Provider Failure (Recipient starting with 'fail@')
+POST {{HostAddress}}/api/notifications
+Content-Type: application/json
+
+{
+  "customerId": "CUST-999",
+  "type": "Email",
+  "recipient": "fail@example.com",
+  "subject": "Simulated Gateway Failure",
+  "message": "This notification tests resilient error handling without crashing.",
+  "priority": "Normal"
+}
+
+###
+
+### 5. Trigger Processing for All Eligible Pending Notifications
+POST {{HostAddress}}/api/notifications/process
+
+###
+
+### 6. Get Notifications for a Customer
+GET {{HostAddress}}/api/notifications/customer/CUST-101
+Accept: application/json
+
+###
+
+### 7. Get All Notifications (with optional filters)
+GET {{HostAddress}}/api/notifications
+Accept: application/json
+
+###
+
+### 8. Get Notification by ID (Replace with an existing GUID)
+GET {{HostAddress}}/api/notifications/00000000-0000-0000-0000-000000000000
+Accept: application/json
